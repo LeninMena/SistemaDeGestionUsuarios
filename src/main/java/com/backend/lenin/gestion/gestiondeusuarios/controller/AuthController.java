@@ -32,19 +32,16 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        Administrador admin = administradorService.buscarPorCorreo(request.getCorreo()).orElse(null);
-        if (admin == null || !passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
-            return ResponseEntity.status(401).body(Map.of("error", "Credenciales inválidas"));
-        }
-
-        String token = jwtUtil.generateToken(admin.getCorreo());
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "admin", admin
-        ));
+   @PostMapping("/login")
+public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    Administrador admin = administradorService.buscarPorCorreo(request.getCorreo()).orElse(null);
+    if (admin == null || !passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
+        return ResponseEntity.status(403).body(Map.of("error", "Credenciales inválidas"));
     }
+    String token = jwtUtil.generateToken(admin.getCorreo());
+    return ResponseEntity.ok(Map.of("token", token, "admin", admin));
+}
+
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
