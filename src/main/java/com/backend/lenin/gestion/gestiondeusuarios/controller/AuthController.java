@@ -15,11 +15,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
-@SecurityRequirement(name = "bearerAuth")
 public class AuthController {
 
     @Autowired
@@ -35,37 +35,51 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    @SecurityRequirement(name = "") // este endpoint no requiere token
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Administrador admin = administradorService.buscarPorCorreo(request.getCorreo()).orElse(null);
         if (admin == null || !passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
             return ResponseEntity.status(403).body(Map.of("error", "Credenciales inválidas"));
         }
+
         String token = jwtUtil.generateToken(admin.getCorreo());
         return ResponseEntity.ok(Map.of("token", token, "admin", admin));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
-        System.out.println(">> LLEGÓ AL /api/register");
+    @PostMapping("/login-usuario")
+    public ResponseEntity<?> loginUsuario(@RequestBody LoginRequest request) {
+        String correo = request.getCorreo().trim().toLowerCase();
+        Optional<Usuario> usuarioOpt = usuarioService.buscarPorCorreo(correo);
 
-        String correoToken = (String) request.getAttribute("correo");
-        System.out.println(">> CORREO EN REQUEST: " + correoToken);
+        System.out.println(">> CORREO ENVIADO: " + correo);
+        System.out.println(">> ¿EXISTE?: " + usuarioOpt.isPresent());
 
-        if (correoToken == null) {
-            return ResponseEntity.status(403).body(Map.of("error", "Token inválido o ausente"));
+        if (usuarioOpt.isEmpty()) {
+            return ResponseEntity.status(403).body(Map.of("error", "Correo no encontrado"));
         }
 
-        boolean esAdmin = administradorService.buscarPorCorreo(correoToken).isPresent();
-        System.out.println(">> ¿ADMIN EXISTE?: " + esAdmin);
+        System.out.println(">> PASSWORD ENVIADA: " + request.getPassword());
+        System.out.println(">> PASSWORD GUARDADA: " + usuarioOpt.get().getPassword());
 
-        if (!esAdmin) {
+        if (!passwordEncoder.matches(request.getPassword(), usuarioOpt.get().getPassword())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Contraseña incorrecta"));
+        }
+
+        String token = jwtUtil.generateToken(usuarioOpt.get().getCorreo());
+        return ResponseEntity.ok(Map.of("token", token, "usuario", usuarioOpt.get()));
+    }
+
+    @PostMapping("/register")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
+        String correoToken = (String) request.getAttribute("correo");
+
+        if (correoToken == null || !administradorService.buscarPorCorreo(correoToken).isPresent()) {
             return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
         }
 
         Usuario nuevoUsuario = new Usuario();
         nuevoUsuario.setNombre(nuevo.getNombre());
-        nuevoUsuario.setCorreo(nuevo.getCorreo());
+        nuevoUsuario.setCorreo(nuevo.getCorreo().toLowerCase());
         nuevoUsuario.setPassword(passwordEncoder.encode(nuevo.getPassword()));
 
         usuarioService.registrarUsuario(nuevoUsuario);
@@ -73,6 +87,7 @@ public class AuthController {
     }
 
     @GetMapping("/usuarios")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> listarUsuarios(HttpServletRequest request) {
         String correo = (String) request.getAttribute("correo");
 
@@ -81,5 +96,16 @@ public class AuthController {
         }
 
         return ResponseEntity.ok(usuarioService.listarUsuarios());
+    }
+
+    // 🔐 Para testear si la contraseña sin encriptar coincide con el hash
+    @GetMapping("/test-password")
+    public ResponseEntity<?> testPassword(@RequestParam String raw, @RequestParam String hash) {
+        boolean matches = passwordEncoder.matches(raw, hash);
+        return ResponseEntity.ok(Map.of(
+                "rawPassword", raw,
+                "hashGuardado", hash,
+                "coincide", matches
+        ));
     }
 }

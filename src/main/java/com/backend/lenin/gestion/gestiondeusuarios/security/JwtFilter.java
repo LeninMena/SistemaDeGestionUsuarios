@@ -39,10 +39,9 @@ public class JwtFilter extends OncePerRequestFilter {
             String correo = jwtUtil.extractCorreo(token);
             System.out.println(">> CORREO EXTRAÍDO DEL TOKEN EN FILTRO: " + correo);
 
-            request.setAttribute("correo", correo); // para uso personalizado
-            // 👇 Agregamos el usuario como autenticado en el contexto de seguridad
+            request.setAttribute("correo", correo);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                    correo, null, List.of() // puedes usar roles si deseas
+                    correo, null, List.of()
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -58,7 +57,11 @@ public class JwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         return path.equals("/api/login")
-            || path.startsWith("/swagger")
-            || path.startsWith("/v3/api-docs");
+                || path.equals("/api/login-usuario")
+                || path.equals("/api/test-password")
+                || path.startsWith("/swagger")
+                || path.startsWith("/v3/api-docs")
+                || path.contains("favicon")
+                || path.contains(".well-known");
     }
 }
