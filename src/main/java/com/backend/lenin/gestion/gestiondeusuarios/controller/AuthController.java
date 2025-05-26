@@ -44,30 +44,42 @@ public class AuthController {
         String token = jwtUtil.generateToken(admin.getCorreo());
         return ResponseEntity.ok(Map.of("token", token, "admin", admin));
     }
-@PostMapping("/register")
-public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
-    System.out.println(">> LLEGÓ AL /api/register"); // 👈🏽 DEBE APARECER
 
-    String correoToken = (String) request.getAttribute("correo");
-    System.out.println(">> CORREO EN REQUEST: " + correoToken); // 👈🏽 DEBE APARECER
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
+        System.out.println(">> LLEGÓ AL /api/register");
 
-    if (correoToken == null) {
-        return ResponseEntity.status(403).body(Map.of("error", "Token inválido o ausente"));
+        String correoToken = (String) request.getAttribute("correo");
+        System.out.println(">> CORREO EN REQUEST: " + correoToken);
+
+        if (correoToken == null) {
+            return ResponseEntity.status(403).body(Map.of("error", "Token inválido o ausente"));
+        }
+
+        boolean esAdmin = administradorService.buscarPorCorreo(correoToken).isPresent();
+        System.out.println(">> ¿ADMIN EXISTE?: " + esAdmin);
+
+        if (!esAdmin) {
+            return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
+        }
+
+        Usuario nuevoUsuario = new Usuario();
+        nuevoUsuario.setNombre(nuevo.getNombre());
+        nuevoUsuario.setCorreo(nuevo.getCorreo());
+        nuevoUsuario.setPassword(passwordEncoder.encode(nuevo.getPassword()));
+
+        usuarioService.registrarUsuario(nuevoUsuario);
+        return ResponseEntity.ok(Map.of("mensaje", "Usuario registrado correctamente"));
     }
 
-    boolean esAdmin = administradorService.buscarPorCorreo(correoToken).isPresent();
-    System.out.println(">> ¿ADMIN EXISTE?: " + esAdmin); // 👈🏽 DEBE APARECER
+    @GetMapping("/usuarios")
+    public ResponseEntity<?> listarUsuarios(HttpServletRequest request) {
+        String correo = (String) request.getAttribute("correo");
 
-    if (!esAdmin) {
-        return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
+        if (correo == null || !administradorService.buscarPorCorreo(correo).isPresent()) {
+            return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
+        }
+
+        return ResponseEntity.ok(usuarioService.listarUsuarios());
     }
-
-    Usuario nuevoUsuario = new Usuario();
-    nuevoUsuario.setNombre(nuevo.getNombre());
-    nuevoUsuario.setCorreo(nuevo.getCorreo());
-    nuevoUsuario.setPassword(passwordEncoder.encode(nuevo.getPassword()));
-
-    usuarioService.registrarUsuario(nuevoUsuario);
-    return ResponseEntity.ok(Map.of("mensaje", "Usuario registrado correctamente"));
-}
 }
