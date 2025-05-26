@@ -3,7 +3,7 @@ package com.backend.lenin.gestion.gestiondeusuarios.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "Administradores") // Corrige el nombre de la tabla para que coincida exactamente
+@Table(name = "administradores") // Corrige el nombre de la tabla para que coincida exactamente
 public class Administrador {
 
     @Id
