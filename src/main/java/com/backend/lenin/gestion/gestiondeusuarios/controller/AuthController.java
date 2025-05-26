@@ -97,6 +97,19 @@ public class AuthController {
 
         return ResponseEntity.ok(usuarioService.listarUsuarios());
     }
+    @GetMapping("/perfil-usuario")
+@SecurityRequirement(name = "bearerAuth")
+public ResponseEntity<?> perfilUsuario(HttpServletRequest request) {
+    String correo = (String) request.getAttribute("correo");
+
+    Optional<Usuario> userOpt = usuarioService.buscarPorCorreo(correo);
+    if (userOpt.isEmpty()) {
+        return ResponseEntity.status(403).body("No autorizado");
+    }
+
+    return ResponseEntity.ok(userOpt.get());
+}
+
 
     // 🔐 Para testear si la contraseña sin encriptar coincide con el hash
     @GetMapping("/test-password")
