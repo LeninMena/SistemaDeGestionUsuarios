@@ -67,26 +67,37 @@ public class AuthController {
         String token = jwtUtil.generateToken(usuarioOpt.get().getCorreo());
         return ResponseEntity.ok(Map.of("token", token, "usuario", usuarioOpt.get()));
     }
+    
 
     @PostMapping("/register")
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
-        String correoToken = (String) request.getAttribute("correo");
+@SecurityRequirement(name = "bearerAuth")
+public ResponseEntity<?> register(@RequestBody UsuarioRequest nuevo, HttpServletRequest request) {
+    String correoToken = (String) request.getAttribute("correo");
 
-        if (correoToken == null || !administradorService.buscarPorCorreo(correoToken).isPresent()) {
-            return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
-        }
+    if (correoToken == null || !administradorService.buscarPorCorreo(correoToken).isPresent()) {
+        return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
+    }
 
+    String rol = nuevo.getRol() != null ? nuevo.getRol().toLowerCase() : "usuario";
+
+    if (rol.equals("admin")) {
+        Administrador nuevoAdmin = new Administrador();
+        nuevoAdmin.setNombre(nuevo.getNombre());
+        nuevoAdmin.setCorreo(nuevo.getCorreo().toLowerCase());
+        nuevoAdmin.setPassword(nuevo.getPassword());
+        nuevoAdmin.setRol("ADMIN");
+        administradorService.registrarAdministrador(nuevoAdmin);
+        return ResponseEntity.ok(Map.of("mensaje", "Administrador registrado correctamente"));
+    } else {
         Usuario nuevoUsuario = new Usuario();
         nuevoUsuario.setNombre(nuevo.getNombre());
         nuevoUsuario.setCorreo(nuevo.getCorreo().toLowerCase());
         nuevoUsuario.setPassword(passwordEncoder.encode(nuevo.getPassword()));
-
         usuarioService.registrarUsuario(nuevoUsuario);
         return ResponseEntity.ok(Map.of("mensaje", "Usuario registrado correctamente"));
     }
-
-    @GetMapping("/usuarios")
+}
+@GetMapping("/usuarios")
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> listarUsuarios(HttpServletRequest request) {
         String correo = (String) request.getAttribute("correo");
